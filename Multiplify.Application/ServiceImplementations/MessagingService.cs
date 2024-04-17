@@ -22,7 +22,7 @@ public class MessagingService(IOptions<EmailSettings> emailSettings) : IMessagin
         //send email
         using (var smtp = new SmtpClient())
         {
-            smtp.Connect(_emailSettings.SmtpServer, _emailSettings.Port, true);
+            smtp.Connect(_emailSettings.SmtpServer, _emailSettings.Port);
             smtp.Authenticate(_emailSettings.Email, _emailSettings.Password);
             smtp.Send(emailToSend);
             smtp.Disconnect(true);
