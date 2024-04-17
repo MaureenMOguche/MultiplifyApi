@@ -1,0 +1,6 @@
+@Multiplify.Api_HostAddress = http://localhost:5125
+
+GET {{Multiplify.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
