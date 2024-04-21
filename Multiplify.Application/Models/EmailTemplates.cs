@@ -43,6 +43,10 @@ public static class EmailTemplates
                         <div style=""display:block;"">
                             {message}
                         </div>
+
+                        <br>
+                        <p>Best regards,</p>
+                        <p>Multiplify Team</p>
                     </div>
                 </div>
                 <div class=""footer""
@@ -58,57 +62,32 @@ public static class EmailTemplates
     public static string WaitlistEmail(string username)
     {
         var message = $@"<p>
-                    Welcome to Multiplify, where we believe in the transformative power of female entrepreneurship! We are
-                    thrilled to have you join our waitlist as we prepare to launch our platform dedicated to connecting
-                    women to essential financial tools and opportunities.
+                    Welcome to Multiplify waitlist! We are building a platform to help women entreprenuers like you access funding, 
+                    resources, and support to grow your business.
                 </p>
                 <p>
-                    At Multiplify, our mission is clear: <strong>to empower women entrepreneurs like you to unleash your
-                        full
-                        potential and drive positive change in communities worldwide.</strong> With our platform, you'll
-                    gain access
-                    to a
-                    dynamic network of resources, mentorship, and support tailored to fuel your entrepreneurial journey.
+                    As a waitlist member, you will get:
                 </p>
-                <p>
-                    Here's a glimpse of what you can expect from Multiplify:
-                </p>
+                
                 <ul>
                     <li>
-                        Financial Tools: Gain access to a suite of financial resources designed to help you manage and grow
-                        your
-                        business effectively.
+                        Early access to our platform.
                     </li>
                     <li>
-                        Opportunity Connections: Connect with like-minded women entrepreneurs, mentors, and investors to
-                        expand
-                        your network and unlock new opportunities.
+                        Exclusive updates and opportunities.
                     </li>
                     <li>
-                        Educational Resources: Access curated content, workshops, and webinars to enhance your skills,
-                        knowledge, and confidence as a business leader.
-                    </li>
-                    <li>
-                        Community Support: Join a vibrant community of women who share your passion for entrepreneurship,
-                        where
-                        you can exchange ideas, seek advice, and celebrate successes together.
+                        A chance to move up the list by inviting friends.
                     </li>
                 </ul>
                 <p>
-                    By signing up for our waitlist, you're not just expressing interest in Multiplify – you're joining a
-                    movement dedicated to leveling the playing field for women in business.
+                    Get ready to multiply your success with us!
                 </p>
                 <br>
                 <p>
-                    Stay tuned for updates on our official launch date, exclusive sneak peeks, and early access
-                    opportunities. In the meantime, we invite you to spread the word about Multiplify and help us amplify
-                    the voices and contributions of women entrepreneurs worldwide.
-                </p>
-                <p>
-                    Thank you for embarking on this exciting journey with us. Together, let's multiply the impact of women
-                    entrepreneurs and empower the world!
+                    Be the first to experience Multiplify. Tell a friend and move up the list together!
                 </p>";
-
+                
         //return message;
         return Prefix(username, "Welcome to Multiplify", message, "...enabling women, enabling the world");
     }
