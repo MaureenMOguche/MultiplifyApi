@@ -3,7 +3,7 @@ using Multiplify.Infrastructure;
 using Multiplify.Infrastructure.SeedData;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.RegisterApplicationServices(builder);
+builder.Services.RegisterApplicationServices(builder, builder.Configuration);
 builder.Services.AddPersistenceServices();
 
 _ = new ConfigurationBuilder()

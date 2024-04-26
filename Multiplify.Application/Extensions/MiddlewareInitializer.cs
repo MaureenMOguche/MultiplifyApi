@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Hangfire;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using System.Reflection;
 
@@ -34,6 +35,7 @@ public static class MiddlewareInitializer
         .WriteAsync(PageTemplates.PageTemplates.GetIndexPage(Assembly
         .GetExecutingAssembly().GetName().Name, "relogosquare.jpg")));
 
+        app.UseHangfireDashboard("/hangfire");
         app.UseExceptionHandler();
         app.UseHttpsRedirection();
         app.UseAuthentication();

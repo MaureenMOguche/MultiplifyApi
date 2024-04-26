@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Hangfire;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Multiplify.Application.Contracts.Repository;
 using Multiplify.Application.Contracts.Services;
 using Multiplify.Application.Dtos.Waitlist;
@@ -23,18 +25,25 @@ public class WaitlistService(IUnitOfWork db, IMessagingService messagingService)
         {
             Email = joinWaitlistDto.Email,
             FullName = joinWaitlistDto.FullName,
+            WhatsappNumber = joinWaitlistDto.WhatsappNumber,
         };
 
         await db.GetRepository<WaitList>().AddAsync(waitListPerson);
 
         if (await db.SaveChangesAsync())
         {
-            await messagingService.SendEmailAsync(new EmailMessage
+            BackgroundJob.Enqueue(() => messagingService.SendEmailAsync(new EmailMessage
             {
                 To = joinWaitlistDto.Email,
                 Subject = "Welcome to Multiplify",
                 Body = EmailTemplates.WaitlistEmail(joinWaitlistDto.FullName)
-            });
+            }));
+            //await messagingService.SendEmailAsync(new EmailMessage
+            //{
+            //    To = joinWaitlistDto.Email,
+            //    Subject = "Welcome to Multiplify",
+            //    Body = EmailTemplates.WaitlistEmail(joinWaitlistDto.FullName)
+            //});
             return ApiResponse.Success("Successfully joined waitlist");
         }
 

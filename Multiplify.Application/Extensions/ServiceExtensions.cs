@@ -19,12 +19,15 @@ using Multiplify.Application.Models;
 using Multiplify.Application.Contracts.Services;
 using Multiplify.Application.ServiceImplementations;
 using Multiplify.Application.Contracts.Repository;
+using Hangfire;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace Multiplify.Application.Extensions;
 public static class ServiceExtensions
 {
     public static void RegisterApplicationServices(this IServiceCollection services,
-        WebApplicationBuilder builder)
+        WebApplicationBuilder builder,
+        IConfiguration config)
     {
         SetupControllers(services);
         SetupSwagger(services);
@@ -36,6 +39,20 @@ public static class ServiceExtensions
         AddServiceDependencies(services);
         RegisterFluentValidation(services);
         AddOptions(services);
+        SetupHangfire(services, config);
+    }
+
+    private static void SetupHangfire(IServiceCollection services, IConfiguration config)
+    {
+        services.AddHangfire(opt =>
+        {
+            opt.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UseSqlServerStorage(config.GetConnectionString("DefaultConnection"));
+        });
+        
+        services.AddHangfireServer();
     }
 
     private static void AddOptions(IServiceCollection services)
