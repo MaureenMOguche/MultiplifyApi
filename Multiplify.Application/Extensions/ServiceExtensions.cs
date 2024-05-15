@@ -14,13 +14,13 @@ using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using ReenUtility.Services;
 using Multiplify.Application.Models;
 using Multiplify.Application.Contracts.Services;
 using Multiplify.Application.ServiceImplementations;
-using Multiplify.Application.Contracts.Repository;
 using Hangfire;
-using static Org.BouncyCastle.Math.EC.ECCurve;
+using Microsoft.Extensions.Caching.Memory;
+using Multiplify.Application.ServiceImplementations.Helpers;
+using Microsoft.AspNetCore.Http;
 
 namespace Multiplify.Application.Extensions;
 public static class ServiceExtensions
@@ -40,6 +40,16 @@ public static class ServiceExtensions
         RegisterFluentValidation(services);
         AddOptions(services);
         SetupHangfire(services, config);
+        OtherSetup(services);
+    }
+
+    private static void OtherSetup(IServiceCollection services)
+    {
+        var scope = services.BuildServiceProvider().CreateScope();
+        var memoryCache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
+
+        TokenProviders.Initialize(memoryCache);
+        UserHelper.Configure(scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>());
     }
 
     private static void SetupHangfire(IServiceCollection services, IConfiguration config)
@@ -71,11 +81,19 @@ public static class ServiceExtensions
     private static void AddServiceDependencies(IServiceCollection services)
     {
         services.AddHttpClient();
+        services.AddMemoryCache();
         services.AddHttpContextAccessor();
-        services.AddScoped<IHttpService, HttpService>();
+        //services.AddScoped<IHttpService, HttpService>();
 
         services.AddScoped<IWaitlistService, WaitlistService>();
         services.AddSingleton<IMessagingService, MessagingService>();
+
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IEntreprenuerService, EntreprenuerService>();
+        services.AddScoped<IFunderService, FunderService>();
+        services.AddScoped<IPhotoService,  PhotoService>();
+
+        //services.AddScoped<IFunderService, IFunderService>();
     }
 
     private static void SetupAuthentication(IServiceCollection services)
@@ -99,6 +117,7 @@ public static class ServiceExtensions
                     Encoding.UTF8.GetBytes(jwtSettings?.Key!)),
             };
         });
+
     }
 
     private static void RegisterFilters(IServiceCollection services)

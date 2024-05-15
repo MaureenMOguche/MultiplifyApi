@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ReenUtility.Responses;
+using Multiplify.Application.Responses;
 
 namespace Multiplify.Application.Middlewares;
 public class GlobalErrorHandling(ILogger<GlobalErrorHandling> logger,
@@ -18,9 +18,9 @@ public class GlobalErrorHandling(ILogger<GlobalErrorHandling> logger,
             "Operation failed, please try again");
 
         if (hostEnvironment.IsDevelopment())
-            apiResponse.Messages = [$"{exception.Message}\n{exception.InnerException}"];
+            apiResponse.Message = $"{exception.Message}\n{exception.InnerException}";
         else
-            apiResponse.Messages = ["Operation failed, please try again"];
+            apiResponse.Message = "Operation failed, please try again";
 
         await httpContext.Response
             .WriteAsJsonAsync(apiResponse, cancellationToken: cancellationToken);

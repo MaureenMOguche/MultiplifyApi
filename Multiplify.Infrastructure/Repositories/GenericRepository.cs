@@ -35,6 +35,11 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
         _dbSet.RemoveRange(entities);
     }
 
+    public async Task<bool> EntityExists(Expression<Func<T, bool>> filter)
+    {
+        return await _dbSet.AnyAsync(filter);
+    }
+
     public IQueryable<T> GetAsync(Expression<Func<T, bool>>? filter = null, bool trackChanges = false)
     {
         IQueryable<T> query = _dbSet;

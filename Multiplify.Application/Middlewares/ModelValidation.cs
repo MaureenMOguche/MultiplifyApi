@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using ReenUtility.Responses;
+using Multiplify.Application.Responses;
 
 namespace Multiplify.Application.Middlewares;
 public static class ModelValidation

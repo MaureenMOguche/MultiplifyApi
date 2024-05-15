@@ -2,7 +2,7 @@
 using Multiplify.Application.Contracts.Services;
 using Multiplify.Application.Dtos.Waitlist;
 using Multiplify.Application.Models;
-using ReenUtility.Responses;
+using Multiplify.Application.Responses;
 
 namespace Multiplify.Api.Controllers;
 

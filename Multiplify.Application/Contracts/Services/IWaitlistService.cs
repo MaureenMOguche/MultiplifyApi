@@ -1,6 +1,6 @@
 ﻿using Multiplify.Application.Dtos.Waitlist;
 using Multiplify.Application.Models;
-using ReenUtility.Responses;
+using Multiplify.Application.Responses;
 
 namespace Multiplify.Application.Contracts.Services;
 public interface IWaitlistService

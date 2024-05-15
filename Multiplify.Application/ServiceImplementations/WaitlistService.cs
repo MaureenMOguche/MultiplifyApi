@@ -6,8 +6,8 @@ using Multiplify.Application.Contracts.Repository;
 using Multiplify.Application.Contracts.Services;
 using Multiplify.Application.Dtos.Waitlist;
 using Multiplify.Application.Models;
+using Multiplify.Application.Responses;
 using Multiplify.Domain;
-using ReenUtility.Responses;
 
 namespace Multiplify.Application.ServiceImplementations;
 public class WaitlistService(IUnitOfWork db, IMessagingService messagingService) : IWaitlistService

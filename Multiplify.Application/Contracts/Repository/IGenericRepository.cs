@@ -9,4 +9,5 @@ public interface IGenericRepository<T> where T : class
     void Delete(T entity);
     Task AddBulkAsync(IEnumerable<T> entities);
     void DeleteBulk(IEnumerable<T> entities);
+    Task<bool> EntityExists(Expression<Func<T, bool>> filter);
 }

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Multiplify.Application.Contracts.Repository;
-using Multiplify.Domain;
+using Multiplify.Domain.User;
 using Multiplify.Infrastructure.Repositories;
 
 namespace Multiplify.Infrastructure;

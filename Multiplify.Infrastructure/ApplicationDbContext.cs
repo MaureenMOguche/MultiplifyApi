@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Multiplify.Domain;
 using Multiplify.Domain.Common;
+using Multiplify.Domain.User;
+using System.Reflection.Emit;
 
 namespace Multiplify.Infrastructure;
 public class ApplicationDbContext(IHttpContextAccessor contextAccessor,
@@ -17,6 +19,22 @@ public class ApplicationDbContext(IHttpContextAccessor contextAccessor,
         //Configure your DbContext here
         
         base.OnConfiguring(optionsBuilder);
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Review>()
+        .HasOne(r => r.Reviewer)
+        .WithMany()
+        .HasForeignKey(r => r.ReviewerId)
+        .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Review>()
+            .HasOne(r => r.Entreprenuer)
+            .WithMany()
+            .HasForeignKey(r => r.EntreprenuerId)
+            .OnDelete(DeleteBehavior.Restrict);
+        base.OnModelCreating(modelBuilder);
     }
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -42,4 +60,8 @@ public class ApplicationDbContext(IHttpContextAccessor contextAccessor,
 
     public DbSet<AppUser> User { get; set; }
     public DbSet<WaitList> WaitList { get; set; }
+    public DbSet<Fund> Funds { get; set; }
+    public DbSet<FundApplication> FundApplications { get; set; }
+    public DbSet<Review> Reviews { get; set; }
+
 }

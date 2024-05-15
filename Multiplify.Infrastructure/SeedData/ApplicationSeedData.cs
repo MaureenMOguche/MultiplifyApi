@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Multiplify.Application.Constants;
-using Multiplify.Domain;
+using Multiplify.Domain.User;
 
 namespace Multiplify.Infrastructure.SeedData;
 public class ApplicationSeedData
@@ -16,7 +16,9 @@ public class ApplicationSeedData
         List<IdentityRole> defaultRoles =
         [
             new IdentityRole { Name = ApplicationRoles.SuperAdmin},
-            new IdentityRole { Name = ApplicationRoles.Member},
+            new IdentityRole { Name = ApplicationRoles.FundProvider},
+            new IdentityRole { Name = ApplicationRoles.MarketExplorer},
+            new IdentityRole { Name = ApplicationRoles.Entreprenuer},
         ];
 
         using (var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>())
