@@ -1,0 +1,20 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      dotnet: 8.0
+  pre_build:
+    commands:
+      - dotnet restore MultiplifyApi/Multiplify.Api/Multiplify.Api.csproj
+      - dotnet restore MultiplifyApi/Multiplify.Application/Multiplify.Application.csproj
+      - dotnet restore MultiplifyApi/Multiplify.Domain/Multiplify.Domain.csproj
+      - dotnet restore MultiplifyApi/Multiplify.Infrastructure/Multiplify.Infrastructure.csproj
+  build:
+    commands:
+      - dotnet build Multiplify/Multiplify.Api/Multiplify.Api.csproj
+  post_build:
+    commands:
+      - dotnet publish -c Release -o ./app/ Multiplify/Multiplify.Api/Multiplify.Api.csproj
+artifacts:
+  files:
+    - "**/*"
