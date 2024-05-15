@@ -15,7 +15,8 @@ public class ApiResponse
 
     public static ApiResponse Failure(int statusCode, string message, List<string>? errors = null)
     {
-        var errorMessages = string.Join(", ", errors ?? Enumerable.Empty<string>());
+        var errorMessages = errors != null && errors.Count() == 1 ? errors.FirstOrDefault() 
+            : string.Join(", ", errors ?? Enumerable.Empty<string>());
         message = $"{message}, {errorMessages}";
         //var errorMessages = string.Join(", ", errors ?? IE)
         return new ApiResponse
