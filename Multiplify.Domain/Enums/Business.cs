@@ -1,9 +1,9 @@
 ﻿namespace Multiplify.Domain.Enums;
 public enum BusinessStage
 {
-    Idea,
-    Startup,
-    Established,
-    Decline,
-    Closed
+    Idea = 1,
+    Startup = 2,
+    Established = 3,
+    Decline = 4,
+    Closed = 5
 }

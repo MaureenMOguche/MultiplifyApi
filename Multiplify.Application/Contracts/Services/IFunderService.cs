@@ -11,5 +11,5 @@ public interface IFunderService
     Task<ApiResponse> GetFund(int fundId);
     Task<ApiResponse> GetFundApplications(int fundId, BaseQueryParams queryParams);
     Task<ApiResponse> GetAllApplications(BaseQueryParams queryParams);
-    Task<ApiResponse> ApproveApplication(int applicationId);
+    Task<ApiResponse> ApproveOrRejectApplication(ApproveOrRejectApplicationDto approve);
 }

@@ -15,14 +15,14 @@ public class ApiResponse
 
     public static ApiResponse Failure(int statusCode, string message, List<string>? errors = null)
     {
-        var errorMessages = errors != null && errors.Count() == 1 ? errors.FirstOrDefault() 
-            : string.Join(", ", errors ?? Enumerable.Empty<string>());
-        message = $"{message}, {errorMessages}";
-        //var errorMessages = string.Join(", ", errors ?? IE)
+        var errorMessages = errors != null && errors.Count == 1 ? errors.FirstOrDefault()
+            : errors != null && errors.Count > 1 ? string.Join(", ", errors) : "";
+
+        
         return new ApiResponse
         {
             StatusCode = statusCode,
-            Message = message,
+            Message = string.IsNullOrEmpty(errorMessages) ? message : $"{message}, {errorMessages}",
             Succeeded = false
         };
     }
@@ -39,7 +39,16 @@ public class ApiResponse<T> : ApiResponse
 
     public static ApiResponse<T> Failure(T data, int statusCode, string message, List<string>? errors = null)
     {
-        return new ApiResponse<T> { StatusCode = statusCode, Succeeded = false, Data = data, Message = $"{message}, {string.Join(", ", errors ?? Enumerable.Empty<string>())}" };
+        var errorMessages = errors != null && errors.Count == 1 ? errors.FirstOrDefault()
+            : errors != null && errors.Count > 1 ? string.Join(", ", errors) : "";
+
+        return new ApiResponse<T>
+        {
+            StatusCode = statusCode,
+            Succeeded = false,
+            Data = data,
+            Message = string.IsNullOrEmpty(errorMessages) ? message : $"{message}, {errorMessages}"
+        };
     }
 }
 

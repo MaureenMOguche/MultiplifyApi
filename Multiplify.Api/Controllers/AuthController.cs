@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Multiplify.Application.Contracts.Services;
 using Multiplify.Application.Dtos.User;
+using Multiplify.Application.Middlewares;
 using Multiplify.Application.Responses;
 using Multiplify.Domain;
 
@@ -15,7 +16,7 @@ namespace Multiplify.Api.Controllers;
 public class AuthController(IAuthService authService) : ControllerBase
 {
     /// <summary>
-    /// Registers a new user
+    /// Registers a new user and returns access token to login
     /// </summary>
     /// <param name="registrationRequest"></param>
     /// <returns></returns>
@@ -28,6 +29,21 @@ public class AuthController(IAuthService authService) : ControllerBase
         var response = await authService.Register(registrationRequest);
         return StatusCode(response.StatusCode, response);
     }
+    
+    /// <summary>
+    /// Registers a new user and sends email confirmation
+    /// </summary>
+    /// <param name="registrationRequest"></param>
+    /// <returns></returns>
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
+    [HttpPost("register-with-confirmation")]
+    public async Task<IActionResult> RegisterWithConfirmation(RegistrationRequest registrationRequest)
+    {
+        var response = await authService.RegisterWithConfirmation(registrationRequest);
+        return StatusCode(response.StatusCode, response);
+    }
 
     /// <summary>
     /// Confirms a user email
@@ -38,7 +54,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
     [HttpPost("confirm-email")]
-    public async Task<IActionResult> Register(ConfirmEmailRequest confirmEmail)
+    public async Task<IActionResult> ConfirmEmail(ConfirmEmailRequest confirmEmail)
     {
         var response = await authService.ConfirmEmail(confirmEmail);
         return StatusCode(response.StatusCode, response);
@@ -124,48 +140,48 @@ public class AuthController(IAuthService authService) : ControllerBase
     /// <summary>
     /// Completes registration for entreprenuer
     /// </summary>
-    /// <param name="userId"></param>
     /// <param name="businessInformation"></param>
     /// <returns></returns>
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
-    [HttpPost("entreprenuer-complete/{userId}")]
-    public async Task<IActionResult> CompleteEntreprenuer(string userId, EntreprenuerCompleteRegistration businessInformation)
+    [HttpPost("entreprenuer-complete")]
+    public async Task<IActionResult> CompleteEntreprenuer([FromForm]EntreprenuerCompleteRegistration businessInformation)
     {
-        var response = await authService.EntreprenuerCompleteRegistration(userId, businessInformation);
+        var response = await authService.EntreprenuerCompleteRegistration(businessInformation);
         return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
     /// Completes registration for fund provider
     /// </summary>
-    /// <param name="userId"></param>
     /// <param name="fundInterests"></param>
     /// <returns></returns>
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
-    [HttpPost("fund-provider-complete/{userId}")]
-    public async Task<IActionResult> CompleteFundProvider(string userId, List<string> fundInterests)
+    [HttpPost("fund-provider-complete")]
+    public async Task<IActionResult> CompleteFundProvider(FunderBusinessInterests fundInterests)
     {
-        var response = await authService.FunderCompleteRegistration(userId, fundInterests);
+        var response = await authService.FunderCompleteRegistration(fundInterests);
         return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
     /// Completes registration for market explorer
     /// </summary>
-    /// <param name="userId"></param>
     /// <param name="explorationInterests"></param>
     /// <returns></returns>
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
-    [HttpPost("market-explorer-complete/{userId}")]
-    public async Task<IActionResult> CompleteMarketExplorer(string userId, List<string> explorationInterests)
+    [HttpPost("market-explorer-complete")]
+    public async Task<IActionResult> CompleteMarketExplorer(ExplorerInterests explorationInterests)
     {
-        var response = await authService.MarketExplorerCompleteRegistration(userId, explorationInterests);
+        var response = await authService.MarketExplorerCompleteRegistration(explorationInterests);
         return StatusCode(response.StatusCode, response);
     }
 

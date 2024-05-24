@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Multiplify.Domain;
 public class WaitList : AuditableEntity
 {
+    [Key]
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
     [Required]

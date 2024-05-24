@@ -1,8 +1,9 @@
-﻿using Multiplify.Domain.User;
+﻿using Multiplify.Domain.Common;
+using Multiplify.Domain.User;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Multiplify.Domain;
-public class Review
+public class Review : AuditableEntity
 {
     public int Id { get; set; }
     public string EntreprenuerId { get; set; } = string.Empty;

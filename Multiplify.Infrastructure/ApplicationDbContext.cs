@@ -13,9 +13,11 @@ public class ApplicationDbContext(IHttpContextAccessor contextAccessor,
 {
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        var connectionString = config.GetConnectionString("DefaultConnection");
+        //var connectionString = config.GetConnectionString("DefaultConnection");
+        var postConnection = config.GetConnectionString("PostgresConnection");
 
-        optionsBuilder.UseSqlServer(connectionString);
+        //optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseNpgsql(postConnection);
         //Configure your DbContext here
         
         base.OnConfiguring(optionsBuilder);
@@ -39,7 +41,7 @@ public class ApplicationDbContext(IHttpContextAccessor contextAccessor,
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<AuditableEntity>();
-        var currentTime = DateTime.Now;
+        var currentTime = DateTime.UtcNow;
         var currentUser = contextAccessor.HttpContext?.User?.Identity?.Name;
 
         foreach (var entry in entries)
@@ -63,5 +65,8 @@ public class ApplicationDbContext(IHttpContextAccessor contextAccessor,
     public DbSet<Fund> Funds { get; set; }
     public DbSet<FundApplication> FundApplications { get; set; }
     public DbSet<Review> Reviews { get; set; }
+    public DbSet<BusinessInformation> BusinessInformations { get; set; }
+    public DbSet<ServiceInformation> ServiceInformations { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
 }

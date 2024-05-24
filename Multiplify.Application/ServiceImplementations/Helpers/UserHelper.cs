@@ -11,11 +11,9 @@ public static class UserHelper
         _contextAccessor = contextAccessor;
     }
 
-    public static UserPrincipal CurrentUser()
+    public static UserPrincipal? CurrentUser()
     {
-        var identity = _contextAccessor?.HttpContext?.User.Identity as ClaimsIdentity;
-
-        if (identity == null || !identity.IsAuthenticated)
+        if (_contextAccessor?.HttpContext?.User.Identity is not ClaimsIdentity identity || !identity.IsAuthenticated)
             return null;
 
         var username = identity?.FindFirst(ClaimTypes.Name)?.Value ?? "";
@@ -35,7 +33,7 @@ public static class UserHelper
 
 public class UserPrincipal
 {
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;

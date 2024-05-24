@@ -13,7 +13,7 @@ public class ServiceInformation
 
     public bool IsAvailable { get; set; }
     public ServicePricingType PricingType { get; set; }
-    public string DeliveryTime { get; set; }
+    public string DeliveryTime { get; set; } = string.Empty;
 
     public string ProjectImages { get; set; } = string.Empty;
 
@@ -22,5 +22,5 @@ public class ServiceInformation
 
 
     [ForeignKey(nameof(EntreprenuerId))]
-    public AppUser Entreprenuer { get; set; }
+    public AppUser Entreprenuer { get; set; } = null!;
 }

@@ -3,6 +3,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -17,6 +18,7 @@ using Multiplify.Application.ServiceImplementations.Helpers;
 using Multiplify.Domain;
 using Multiplify.Domain.Enums;
 using Multiplify.Domain.User;
+using Org.BouncyCastle.Asn1.Cmp;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -26,15 +28,21 @@ namespace Multiplify.Application.ServiceImplementations;
 public class AuthService(IUnitOfWork db,
     IMessagingService messagingService,
     IConfiguration config,
-    IOptions<JwtSettings> jwtSettings) : IAuthService
+    IOptions<JwtSettings> jwtSettings,
+    IMemoryCache memoryCache,
+    IPhotoService photoService) : IAuthService
 {
     
-    private readonly string mulitplifyUrl = config.GetValue<string>("MulitplifyUrl")!;
+    private readonly string mulitplifyUrl = config.GetValue<string>("MultiplifyUrl")!;
+    private readonly string mulitplifyTempUrl = config.GetValue<string>("MultiplifyTempUrl")!;
     private readonly JwtSettings _jwtSettings = jwtSettings.Value;
 
     public async Task<ApiResponse> ChangePassword(ChangePasswordRequest changePasswordRequest)
     {
-        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Email == changePasswordRequest.Email, true).FirstOrDefaultAsync();
+        var currentUser = UserHelper.CurrentUser();
+        if (currentUser == null) return ApiResponse.Failure(StatusCodes.Status401Unauthorized, "User not authorized");
+
+        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Email == currentUser.Email, true).FirstOrDefaultAsync();
 
         if (user == null)
             return ApiResponse.Failure(StatusCodes.Status404NotFound, "Email not found");
@@ -74,16 +82,38 @@ public class AuthService(IUnitOfWork db,
         return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "An error occured when confirming the email, please try again");
     }
 
-    public async Task<ApiResponse> EntreprenuerCompleteRegistration(string userId, EntreprenuerCompleteRegistration completeRegistration)
+    public async Task<ApiResponse> EntreprenuerCompleteRegistration(EntreprenuerCompleteRegistration completeRegistration)
     {
-        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Id == userId).FirstOrDefaultAsync();
+        var currentUser = UserHelper.CurrentUser();
+        if (currentUser == null) return ApiResponse.Failure(StatusCodes.Status401Unauthorized, "User not authorized");
+
+        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Id == currentUser.Id).FirstOrDefaultAsync();
         if (user == null)
             return ApiResponse.Failure(StatusCodes.Status404NotFound, "User not found");
 
+        var userBusiness = await db.GetRepository<BusinessInformation>().EntityExists(x => x.EntreprenuerId == user.Id);
+
+        if (user.IsRoleSet && userBusiness)
+            return ApiResponse.Failure(StatusCodes.Status400BadRequest, "You have already completed your onboarding");
+
         user.IsRoleSet = true;
         user.Role = Roles.Entreprenuer.ToString();
+        currentUser.Role = Roles.Entreprenuer.ToString();
 
         db.GetRepository<AppUser>().Update(user);
+
+        List<string> certs = new();
+        if (completeRegistration.Certifications != null && completeRegistration.Certifications.Count > 0)
+        {
+            for (int cert = 0; cert < completeRegistration.Certifications.Count; cert++)
+            {
+                var imageRes = await photoService.AddPhotoAsync(completeRegistration.Certifications[cert], 
+                    $"{user.UserName}_certification{cert}", $"MultiplifyCerts");
+
+                if (imageRes.StatusCode == System.Net.HttpStatusCode.OK)
+                   certs.Add(imageRes.SecureUrl.AbsoluteUri);
+            }
+        }
 
         var business = new BusinessInformation
         {
@@ -92,7 +122,8 @@ public class AuthService(IUnitOfWork db,
             Stage = completeRegistration.BusinessStage,
             Industry = completeRegistration.Industry,
             AverageIncome = completeRegistration.AverageIncome,
-            EntreprenuerId = userId
+            Entreprenuer = user,
+            Certifications = certs.Count <= 0 ? string.Empty : certs.Count == 1 ? certs[0] : string.Join(", ", certs),
         };
 
         await db.GetRepository<BusinessInformation>().AddAsync(business);
@@ -110,15 +141,15 @@ public class AuthService(IUnitOfWork db,
         if (user == null)
             return ApiResponse.Failure(StatusCodes.Status404NotFound, "Email not found");
 
-        var token = TokenProviders.GenerateEmailCodeToken(TokenPurpose.PasswordReset.ToString(), user.Email!);
+        var token = TokenProviders.GeneratePasswordResetToken(TokenPurpose.PasswordReset.ToString(), user.Id!);
 
-        var returnUrl = $"{mulitplifyUrl}/forgot-password?email={user.Email}&token={token}";
+        var returnUrl = $"{mulitplifyTempUrl}/reset-password?token={token}";
 
         var emailMessage = new EmailMessage
         {
-            To = user.Email,
-            Subject = "Welcome to Multiplify",
-            Body = $"Hi {user.FullName}, please click the link to reset your password {returnUrl}"
+            To = user.Email!,
+            Subject = "Multiplify - Reset Password Request",
+            Body = EmailTemplates.ResetPasswordEmail(user.FullName, returnUrl)
         };
 
         BackgroundJob.Enqueue(() => messagingService.SendEmailAsync(emailMessage));
@@ -140,18 +171,20 @@ public class AuthService(IUnitOfWork db,
         (string accesstoken, string refreshtoken) = GenerateLoginToken(user);
 
         user.RefreshToken  = refreshtoken;
-        user.RefreshExpiry = DateTime.Now.AddDays(2);
+        user.RefreshExpiry = DateTime.UtcNow.AddDays(2);
 
         db.GetRepository<AppUser>().Update(user);
         if (await db.SaveChangesAsync())
             return ApiResponse<object>.Success(new 
             {
                 Username = user.UserName,
+                UserId = user.Id,
+                user.IsRoleSet,
                 user.Role,
                 Token = new
                 {
                     AccessToken = accesstoken,
-                    AccessTokenExpiry = DateTime.Now.AddMinutes(_jwtSettings.DurationInMinutes),
+                    AccessTokenExpiry = DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes),
                     RefreshToken = refreshtoken,
                     RefreshTokenExpiry = user.RefreshExpiry
                 }
@@ -163,13 +196,13 @@ public class AuthService(IUnitOfWork db,
 
     private (string accesstoken, string refreshtoken) GenerateLoginToken(AppUser user)
     {
-        var role = user.Role ?? ApplicationRoles.Entreprenuer;
+        var role = user.Role ?? "";
 
         var claims = new Claim[]
         {
             new(ClaimTypes.Role, role),
-            new(ClaimTypes.Name, user.UserName),
-            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Name, user.UserName!),
+            new(ClaimTypes.Email, user.Email!),
             new(ClaimTypes.NameIdentifier, user.Id)
         };
 
@@ -184,16 +217,62 @@ public class AuthService(IUnitOfWork db,
             audience: _jwtSettings.Audience,
         signingCredentials: signingCredentials,
             claims: claims,
-            expires: DateTime.Now.AddMinutes(_jwtSettings.DurationInMinutes)
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes)
             );
 
         var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-        var refreshToken = $"{Guid.NewGuid()}_{Guid.NewGuid()}_{DateTime.Now}_{Guid.NewGuid()}_{Guid.NewGuid()}";
+        var refreshToken = $"{Guid.NewGuid()}_{Guid.NewGuid()}_{DateTime.UtcNow}_{Guid.NewGuid()}_{Guid.NewGuid()}";
 
         return (tokenString, refreshToken);
     }
 
     public async Task<ApiResponse> Register(RegistrationRequest registrationRequest)
+    {
+        var userExists = await db.GetRepository<AppUser>().GetAsync(x => x.Email == registrationRequest.Email).FirstOrDefaultAsync();
+        if (userExists != null)
+            return ApiResponse.Failure(StatusCodes.Status400BadRequest, "User already exists");
+
+        var user = new AppUser
+        {
+            FirstName = registrationRequest.FirstName,
+            LastName = registrationRequest.LastName,
+            Email = registrationRequest.Email,
+            UserName = registrationRequest.Email,
+            PasswordHash = BC.EnhancedHashPassword(registrationRequest.Password)
+        };
+
+        var passwordList = new List<string> { BC.EnhancedHashPassword(registrationRequest.Password) };
+        memoryCache.Set(user.Id, passwordList);
+
+        await db.GetRepository<AppUser>().AddAsync(user);
+
+        if (!await db.SaveChangesAsync())
+            return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "Failed to register user");
+
+        (var token, string refreshToken) = GenerateLoginToken(user);
+
+
+        var emailMessage = new EmailMessage
+        {
+            To = registrationRequest.Email,
+            Subject = "Welcome to Multiplify",
+            Body = $"Dear {user.FullName}, welcome to multiplify!"
+        };
+
+        BackgroundJob.Enqueue(() => messagingService.SendEmailAsync(emailMessage));
+
+        return ApiResponse<object>.Success(new 
+        {
+            UserId = user.Id,
+            user.FirstName,
+            user.LastName,
+            user.Email,
+            user.IsRoleSet,
+            AccessToken = token
+        }, "User registered successfully");
+    }
+    
+    public async Task<ApiResponse> RegisterWithConfirmation(RegistrationRequest registrationRequest)
     {
         var userExists = await db.GetRepository<AppUser>().GetAsync(x => x.Email == registrationRequest.Email).FirstOrDefaultAsync();
         if (userExists != null)
@@ -226,7 +305,7 @@ public class AuthService(IUnitOfWork db,
 
         BackgroundJob.Enqueue(() => messagingService.SendEmailAsync(emailMessage));
 
-        return ApiResponse<AppUser>.Success(user, "User registered successfully");
+        return ApiResponse.Success("User registered successfully");
     }
 
     public async Task<ApiResponse> ResendConfirmationEmail(string email)
@@ -236,7 +315,7 @@ public class AuthService(IUnitOfWork db,
         if (user == null)
             return ApiResponse.Failure(StatusCodes.Status404NotFound, "Email not found");
 
-        var token = TokenProviders.GenerateEmailCodeToken(TokenPurpose.ConfirmEmail.ToString(), user.Email);
+        var token = TokenProviders.GenerateEmailCodeToken(TokenPurpose.ConfirmEmail.ToString(), user.Email!);
 
         var returnUrl = $"{mulitplifyUrl}/confirm-email?email={user.Email}&token={token}";
 
@@ -254,35 +333,28 @@ public class AuthService(IUnitOfWork db,
 
     public async Task<ApiResponse> ResetPassword(ResetPasswordRequest resetPasswordRequest)
     {
-        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Email == resetPasswordRequest.Email, true).FirstOrDefaultAsync();
-
-        if (user == null)
-            return ApiResponse.Failure(StatusCodes.Status404NotFound, "Email not found");
-
-        var isTokenValid = TokenProviders.ValidateEmailCodeToken(TokenPurpose.PasswordReset.ToString(), resetPasswordRequest.Token, user.Email);
+        (bool isTokenValid, string message) = await TokenProviders.ValidatePasswordResetToken(TokenPurpose.PasswordReset.ToString(), resetPasswordRequest.Token, resetPasswordRequest.Password);
 
         if (!isTokenValid)
-            return ApiResponse.Failure(StatusCodes.Status400BadRequest, "Invalid token");
+            return ApiResponse.Failure(StatusCodes.Status400BadRequest, message);
 
-        user.PasswordHash = BC.EnhancedHashPassword(resetPasswordRequest.Password);
+        return ApiResponse.Success("Successfully reset password");
 
-        db.GetRepository<AppUser>().Update(user);
-
-        if (await db.SaveChangesAsync())
-            return ApiResponse.Success("Successfully reset password");
-
-        return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "An error occured while resetting password, pleasetry again");
     }
 
-    public async Task<ApiResponse> FunderCompleteRegistration(string userId, List<string> businessInterests)
+    public async Task<ApiResponse> FunderCompleteRegistration(FunderBusinessInterests businessInterests)
     {
-        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Id == userId).FirstOrDefaultAsync();
+        var currentUser = UserHelper.CurrentUser();
+        if (currentUser == null) return ApiResponse.Failure(StatusCodes.Status401Unauthorized, "User not authorized");
+
+        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Id == currentUser.Id).FirstOrDefaultAsync();
         if (user == null)
             return ApiResponse.Failure(StatusCodes.Status404NotFound, "User not found");
 
         user.IsRoleSet = true;
         user.Role = Roles.FundProvider.ToString();
-        user.FundProviderInterests = string.Join(", ", businessInterests);
+        user.FundProviderInterests = string.Join(", ", businessInterests.BusinessInterets);
+        currentUser.Role = Roles.FundProvider.ToString();
 
         db.GetRepository<AppUser>().Update(user);
 
@@ -292,21 +364,65 @@ public class AuthService(IUnitOfWork db,
         return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "An error occured while completing funder profile, please try again");
     }
 
-    public async Task<ApiResponse> MarketExplorerCompleteRegistration(string userId, List<string> exploreInterests)
+    public async Task<ApiResponse> MarketExplorerCompleteRegistration(ExplorerInterests exploreInterests)
     {
-        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Id == userId).FirstOrDefaultAsync();
+        var currentUser = UserHelper.CurrentUser();
+        if (currentUser == null) return ApiResponse.Failure(StatusCodes.Status401Unauthorized, "User not authorized");
+
+        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Id == currentUser.Id).FirstOrDefaultAsync();
         if (user == null)
             return ApiResponse.Failure(StatusCodes.Status404NotFound, "User not found");
 
         user.IsRoleSet = true;
         user.Role = Roles.MarketExplorer.ToString();
-        user.MarketExplorerInterests = string.Join(", ", exploreInterests);
+        currentUser.Role = Roles.MarketExplorer.ToString();
+
+        if (exploreInterests != null)
+            user.MarketExplorerInterests = string.Join(", ", exploreInterests);
 
         db.GetRepository<AppUser>().Update(user);
 
         if (await db.SaveChangesAsync())
-            return ApiResponse.Success("Successfully completed funder profile");
+            return ApiResponse.Success("Successfully completed onboarding as market explorer");
 
-        return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "An error occured while completing funder profile, please try again");
+        return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "An error occured while completing explorer profile, please try again");
+    }
+
+    public async Task<ApiResponse> RefreshToken()
+    {
+        var currentUser = UserHelper.CurrentUser();
+        if (currentUser == null) return ApiResponse.Failure(StatusCodes.Status401Unauthorized, "User not authorized");
+
+        var user = await db.GetRepository<AppUser>().GetAsync(x => x.Id == currentUser.Id).FirstOrDefaultAsync();
+
+        if (user == null)
+            return ApiResponse.Failure(StatusCodes.Status404NotFound, "User not found");
+
+        if (user.RefreshExpiry < DateTime.UtcNow)
+            return ApiResponse.Failure(StatusCodes.Status400BadRequest, "Refresh token has expired, please login again");
+
+        (string accesstoken, string refreshtoken) = GenerateLoginToken(user);
+
+        user.RefreshToken = refreshtoken;
+        user.RefreshExpiry = DateTime.UtcNow.AddDays(2);
+
+        db.GetRepository<AppUser>().Update(user);
+
+        if (await db.SaveChangesAsync())
+            return ApiResponse<object>.Success(new
+            {
+                Username = user.UserName,
+                user.Role,
+                Token = new
+                {
+                    AccessToken = accesstoken,
+                    AccessTokenExpiry = DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes),
+                    RefreshToken = refreshtoken,
+                    RefreshTokenExpiry = user.RefreshExpiry
+                }
+
+            }, "Token refreshed successfully");
+
+        return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "Failed to refresh token, please try again");
     }
 }

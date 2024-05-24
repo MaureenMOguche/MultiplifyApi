@@ -3,8 +3,8 @@ using Multiplify.Infrastructure;
 using Multiplify.Infrastructure.SeedData;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.RegisterApplicationServices(builder, builder.Configuration);
 builder.Services.AddPersistenceServices();
+builder.Services.RegisterApplicationServices(builder, builder.Configuration);
 
 _ = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)

@@ -1,6 +1,7 @@
 ﻿using Hangfire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Multiplify.Application.SignalR;
 using System.Reflection;
 
 namespace Multiplify.Application.Extensions;
@@ -34,6 +35,11 @@ public static class MiddlewareInitializer
         app.MapGet("/", async (context) => await context.Response
         .WriteAsync(PageTemplates.PageTemplates.GetIndexPage(Assembly
         .GetExecutingAssembly().GetName().Name, "relogosquare.jpg")));
+
+        app.UseEndpoints(endpoints =>
+        {
+            _ = endpoints.MapHub<NotificationHub>("/notificationHub");
+        });
 
         app.UseHangfireDashboard("/hangfire");
         app.UseExceptionHandler();

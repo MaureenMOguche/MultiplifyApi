@@ -21,6 +21,9 @@ using Hangfire;
 using Microsoft.Extensions.Caching.Memory;
 using Multiplify.Application.ServiceImplementations.Helpers;
 using Microsoft.AspNetCore.Http;
+using Multiplify.Application.Contracts.Repository;
+using Multiplify.Application.Contracts;
+using Hangfire.PostgreSql;
 
 namespace Multiplify.Application.Extensions;
 public static class ServiceExtensions
@@ -32,7 +35,7 @@ public static class ServiceExtensions
         SetupControllers(services);
         SetupSwagger(services);
         ConfigureSerilog(builder);
-        SetupAuthentication(services);
+        SetupAuthentication(services, config);
         BindConfigurations(services);
         AddApiVersioning(services);
         RegisterFilters(services);
@@ -47,8 +50,9 @@ public static class ServiceExtensions
     {
         var scope = services.BuildServiceProvider().CreateScope();
         var memoryCache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
+        var db = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        TokenProviders.Initialize(memoryCache);
+        TokenProviders.Initialize(memoryCache, db);
         UserHelper.Configure(scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>());
     }
 
@@ -59,7 +63,7 @@ public static class ServiceExtensions
             opt.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseSqlServerStorage(config.GetConnectionString("DefaultConnection"));
+            .UsePostgreSqlStorage(x => x.UseNpgsqlConnection(config.GetConnectionString("PostgresConnection")));
         });
         
         services.AddHangfireServer();
@@ -76,10 +80,17 @@ public static class ServiceExtensions
             .BindConfiguration(nameof(EmailSettings))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+
+        services.AddOptions<CloudinarySettings>()
+            .BindConfiguration(nameof(CloudinarySettings))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
     }
 
     private static void AddServiceDependencies(IServiceCollection services)
     {
+        services.AddSignalR();
         services.AddHttpClient();
         services.AddMemoryCache();
         services.AddHttpContextAccessor();
@@ -92,13 +103,17 @@ public static class ServiceExtensions
         services.AddScoped<IEntreprenuerService, EntreprenuerService>();
         services.AddScoped<IFunderService, FunderService>();
         services.AddScoped<IPhotoService,  PhotoService>();
+        services.AddScoped<IUserNotificationService, UserNotificationService>();
+        services.AddScoped<IWebNotificationService, WebNotificationService>();
+        services.AddScoped<IUserService, UserService>();
 
         //services.AddScoped<IFunderService, IFunderService>();
     }
 
-    private static void SetupAuthentication(IServiceCollection services)
+    private static void SetupAuthentication(IServiceCollection services, IConfiguration config)
     {
-        var jwtSettings = services.BuildServiceProvider().GetService<IOptions<JwtSettings>>()?.Value;
+        var jwtSettings = config.GetSection(nameof(JwtSettings)).Get<JwtSettings>();
+
         services.AddAuthentication(opt =>
         {
             opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

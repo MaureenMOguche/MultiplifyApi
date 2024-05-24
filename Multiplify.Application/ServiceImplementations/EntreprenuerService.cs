@@ -10,9 +10,10 @@ using Multiplify.Domain;
 using Multiplify.Domain.User;
 
 namespace Multiplify.Application.ServiceImplementations;
-public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
+public class EntreprenuerService(IUnitOfWork db,
+    IPhotoService photoService) : IEntreprenuerService
 {
-    private readonly UserPrincipal currentUser = UserHelper.CurrentUser();
+    private readonly UserPrincipal? currentUser = UserHelper.CurrentUser();
 
     public async Task<ApiResponse> AddUserReview(string userId, AddUserReviewDto addUserReview)
     {
@@ -66,6 +67,45 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
         return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "Failed to apply for funding");
     }
 
+    public async Task<ApiResponse> CreateServiceProfile(CreateServiceProfileDto createServiceProfileDto)
+    {
+        if (currentUser == null)
+            return ApiResponse.Failure(StatusCodes.Status401Unauthorized, "User not authenticated");
+
+        if (!currentUser.IsInRole(ApplicationRoles.Entreprenuer))
+            return ApiResponse.Failure(StatusCodes.Status403Forbidden, "Action not allowed: only entreprenuers can create service profiles");
+
+        var serviceInfo = new ServiceInformation
+        {
+            EntreprenuerId = currentUser.Id,
+            Title = createServiceProfileDto.Title,
+            ServicesOffered = string.Join(",", createServiceProfileDto.Services),
+            IsAvailable = createServiceProfileDto.IsAvailable,
+            PricingType = createServiceProfileDto.PricingType,
+            DeliveryTime = createServiceProfileDto.DeliveryTime,
+            Link = createServiceProfileDto.Link,
+        };
+
+        if (createServiceProfileDto.ProjectImages != null)
+        {
+            foreach (var image in createServiceProfileDto.ProjectImages)
+            {
+                var upload = await photoService.AddPhotoAsync(image, $"{currentUser.Username}_{createServiceProfileDto.Title.Replace(" ", "_").ToLower()}_{Guid.NewGuid()}", "MultiplifyProjectImages");
+                if (upload.Error != null)
+                    return ApiResponse.Failure(StatusCodes.Status500InternalServerError, upload.Error.Message);
+
+                serviceInfo.ProjectImages += upload.SecureUrl.AbsoluteUri + ",";
+            }
+        }
+
+        await db.GetRepository<ServiceInformation>().AddAsync(serviceInfo);
+
+        if (await db.SaveChangesAsync())
+            return ApiResponse.Success("Successfully created service profile");
+
+        return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "Failed to create service profile");
+    }
+
     public async Task<ApiResponse> GetAllFundings(BaseQueryParams queryParams)
     {
         var fundings = db.GetRepository<Fund>()
@@ -82,7 +122,11 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
                 x.Requirements,
             }).AsEnumerable();
 
-        return ApiResponse<object>.Success(fundings, fundings.Any() ? "Successfully retrieved fundings" : "No fundings available");
+        fundings = fundings.OrderByDescending(x => x.ApplicationDeadline);
+
+        var pagination = fundings.Paginate(queryParams.PageNumber, queryParams.PageSize);
+
+        return ApiResponse<object>.Success(pagination, fundings.Any() ? "Successfully retrieved fundings" : "No fundings available");
     }
 
     public async Task<ApiResponse> GetAllServiceProfiles(BaseQueryParams queryParams)
@@ -98,11 +142,15 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
                 x.IsAvailable,
                 x.PricingType,
                 x.DeliveryTime,
-                x.ProjectImages,
+                ProfilePicture = x.Entreprenuer.ProfilePicture,
                 x.Link
             }).AsEnumerable();
 
-        return ApiResponse<object>.Success(serviceProfiles, serviceProfiles.Any() 
+        serviceProfiles = serviceProfiles.OrderByDescending(x => x.Title);
+
+        var pagination = serviceProfiles.Paginate(queryParams.PageNumber, queryParams.PageSize);
+
+        return ApiResponse<object>.Success(pagination, serviceProfiles.Any() 
             ? "Successfully retrieved service profiles" : "No service profiles available");
     }
 
@@ -145,6 +193,7 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
                 x.PricingType,
                 x.DeliveryTime,
                 x.ProjectImages,
+                ProfilePicture = x.Entreprenuer.ProfilePicture,
                 RatingsCount = x.Entreprenuer.Reviews != null 
                     ? x.Entreprenuer.Reviews.Count() : 0,
                 x.Entreprenuer.AverageRating
@@ -167,7 +216,10 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
                 x.Rate,
                 x.Comment,
                 x.Reviewer.FullName,
+                x.CreatedOn
             });
+
+        reviews = reviews.OrderByDescending(x => x.CreatedOn);
 
         return ApiResponse<object>.Success(reviews, reviews.Any() ? "Successfully retrieved reviews" : "No reviews available");
     }
@@ -189,7 +241,11 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
                 DateApplied = x.CreatedOn,
             }).AsEnumerable();
 
-        return ApiResponse<object>.Success(applications, applications.Any() ? "Successfully retrieved applications" : "No applications available");
+        applications = applications.OrderByDescending(x => x.DateApplied);
+
+        var pagination = applications.Paginate(queryParams.PageNumber, queryParams.PageSize);
+
+        return ApiResponse<object>.Success(pagination, applications.Any() ? "Successfully retrieved applications" : "No applications available");
     }
 
     public async Task<ApiResponse> UpdateBusinessProfile(UpdateBusinessProfileDto updateBusinessProfile)
@@ -240,13 +296,13 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
         return ApiResponse.Failure(StatusCodes.Status500InternalServerError, "Failed to update service profile");
     }
 
-    public async Task<ApiResponse> UserRecommendedFunding()
+    public async Task<ApiResponse> UserRecommendedFunding(BaseQueryParams queryParams)
     {
         var businessInformation = await db.GetRepository<BusinessInformation>()
             .GetAsync(x => x.EntreprenuerId == currentUser.Id)
             .Select(a =>new
             {
-                Industry = a.Industry,
+                a.Industry,
                 Categories = a.Categories.Split(",", StringSplitOptions.RemoveEmptyEntries)
             })
             .FirstOrDefaultAsync();
@@ -281,6 +337,13 @@ public class EntreprenuerService(IUnitOfWork db) : IEntreprenuerService
 
         }
 
-        return ApiResponse<object>.Success(fundings, fundings.Any() ? "Successfully retrieved recommended fundings" : "No recommended fundings available");
+        if (!string.IsNullOrEmpty(queryParams.Search))
+            fundings = fundings.Where(x => x.Name.Contains(queryParams.Search));
+
+        fundings = fundings.OrderByDescending(x => x.ApplicationDeadline);
+
+        var pagination = fundings.Paginate(queryParams.PageNumber, queryParams.PageSize);
+
+        return ApiResponse<object>.Success(pagination, fundings.Any() ? "Successfully retrieved recommended fundings" : "No recommended fundings available");
     }
 }

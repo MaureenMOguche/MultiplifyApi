@@ -51,7 +51,7 @@ public static class EmailTemplates
                 </div>
                 <div class=""footer""
                     style=""background-color: #008080; padding: 30px; text-align: center; color: white;"">
-                    <p>Copyright &copy; {DateTime.Now.Year} Multiplify</p>
+                    <p>Copyright &copy; {DateTime.UtcNow.Year} Multiplify</p>
                 </div>
             </body>
 
@@ -90,5 +90,47 @@ public static class EmailTemplates
                 
         //return message;
         return Prefix(username, "Welcome to Multiplify", message, "...enabling women, enabling the world");
+    }
+
+    public static string WelcomeEmail(string username)
+    {
+        var message = $@"<h1>Welcome to Multiplify!</h1>
+                <p>Dear {username},</p>
+                <p>We're thrilled to have you join Multiplify, your ultimate platform for gaining access to finance to grow your business!</p>
+                <p>With Multiplify, you can:</p>
+                <ul>
+                  <li>Gain Access to finance to fulfil your business needs</li>
+                  <li>Showcase your skills in the market place and get hired!</li>
+                  <li>Provide funds for entreprenuers in business areas of interest to you</li>
+                  <li>And much more!</li>
+                </ul>
+                <p>To get started, simply click the button below to access your account:</p>
+                <div style=""text-align: center;"">
+                  <a href=""https://www.mymultiplify.com/login"" class=""button"">Access My Account</a>
+                </div>
+
+
+                <p>If you have any questions or need assistance, feel free to reach out to our support team at support@multiplify.com.</p>
+                <br/>            
+                <p>Happy multiplying!</p>
+                <p>Sincerely,<br>The Multiplify Team</p>";
+
+        return Prefix(username, "Welcome to Multiplify", message);
+    }
+
+    public static string ResetPasswordEmail(string username, string token)
+    {
+        var message = $@"<h1>Password Reset Request</h1>
+            <p>Dear {username},</p>
+            <p>We received a request to reset your password for your account with Multiplify.</p>
+            <p>If you made this request, please click the button below to reset your password:</p>
+            <div style=""text-align: center;"">
+              <a href=""{token}"" class=""button"">Reset Password</a>
+            </div>
+            <p>If you didn't make this request, you can safely ignore this email. Your password will remain unchanged.</p>
+            <p>If you need further assistance, please contact our support team at support@multiplify.com.</p>
+            <p>Best regards,<br>The Multiplify Team</p>";
+
+        return Prefix(username, "Password Reset Request", message);
     }
 }

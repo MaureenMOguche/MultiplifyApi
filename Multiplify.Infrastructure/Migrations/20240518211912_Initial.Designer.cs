@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Multiplify.Infrastructure;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Multiplify.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240518211912_Initial")]
+    partial class Initial
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -238,14 +241,8 @@ namespace Multiplify.Infrastructure.Migrations
                     b.Property<decimal>("AverageIncome")
                         .HasColumnType("numeric");
 
-                    b.Property<string>("BusinessLogo")
-                        .HasColumnType("text");
-
                     b.Property<string>("Categories")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Certifications")
                         .HasColumnType("text");
 
                     b.Property<string>("CreatedBy")
@@ -278,9 +275,8 @@ namespace Multiplify.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Stage")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

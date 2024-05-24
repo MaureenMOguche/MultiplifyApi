@@ -1,4 +1,5 @@
-﻿using Multiplify.Domain.Enums;
+﻿using Microsoft.AspNetCore.Http;
+using Multiplify.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Multiplify.Application.Dtos.User;
@@ -30,14 +31,18 @@ public record ConfirmEmailRequest(
     string Email, 
     [Required(ErrorMessage = "Token is required")]
     string Token);
-public record ChangePasswordRequest(string Email, string CurrentPassword, string NewPassword);
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public record ForgotPasswordRequest(string Email);
-public record ResetPasswordRequest(string Email, string Token, string Password);
+public record ResetPasswordRequest(string Token, string Password);
 
 public record EntreprenuerCompleteRegistration(
-    string Services,
     string BusinessName,
     BusinessStage BusinessStage,
+    //[AllowedValues("Idea", "Startup", "Established", ErrorMessage ="Business stage must either be Idea, Startup or Established")]string BusinessStage,
     [MaxLength(500)]string? BusinessDescription,
     string Industry,
+    List<IFormFile>? Certifications,
     decimal AverageIncome = 0);
+
+public record FunderBusinessInterests(List<string> BusinessInterets);
+public record ExplorerInterests(List<string> BusinessInterests);

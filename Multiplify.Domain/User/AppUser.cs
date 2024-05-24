@@ -8,6 +8,9 @@ public class AppUser : IdentityUser
     public bool IsRoleSet { get; set; } = false;
     public string RefreshToken { get; set; } = string.Empty;
     public DateTime RefreshExpiry { get; set; }
+    public string? ProfilePicture { get; set; }
+
+    public DateTime DateRegistered { get; set; } = DateTime.UtcNow;
     public string? Role { get; set; }
 
     public string? FundProviderInterests { get; set; }

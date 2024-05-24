@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Multiplify.Application.Contracts.Services;
 using Multiplify.Application.Dtos;
+using Multiplify.Application.Middlewares;
 using Multiplify.Application.Responses;
 
 namespace Multiplify.Api.Controllers;
@@ -10,10 +11,27 @@ namespace Multiplify.Api.Controllers;
 /// <summary>
 /// Entreprenuers controller    
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class EntreprenuersController(IEntreprenuerService entreprenuerService) : ControllerBase
 {
+
+    /// <summary>
+    /// Create a service profile
+    /// </summary>
+    /// <param name="createServiceProfileDto"></param>
+    /// <returns></returns>
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
+    [HttpPost("create-service-profile")]
+    public async Task<IActionResult> CreateServiceProfile([FromForm]CreateServiceProfileDto createServiceProfileDto)
+    {
+        var response = await entreprenuerService.CreateServiceProfile(createServiceProfileDto);
+        return StatusCode(response.StatusCode, response);
+    }
+
     /// <summary>
     /// Get business profile
     /// </summary>
@@ -97,7 +115,7 @@ public class EntreprenuersController(IEntreprenuerService entreprenuerService) :
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [HttpGet("all-fundings")]
-    public async Task<IActionResult> GetAllFundings(BaseQueryParams queryParams)
+    public async Task<IActionResult> GetAllFundings([FromQuery]BaseQueryParams queryParams)
     {
         var response = await entreprenuerService.GetAllFundings(queryParams);
         return StatusCode(response.StatusCode, response);
@@ -110,7 +128,7 @@ public class EntreprenuersController(IEntreprenuerService entreprenuerService) :
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [HttpGet("my-applications")]
-    public async Task<IActionResult> MyApplications(BaseQueryParams queryParams)
+    public async Task<IActionResult> MyApplications([FromQuery]BaseQueryParams queryParams)
     {
         var response = await entreprenuerService.MyApplications(queryParams);
         return StatusCode(response.StatusCode, response);
@@ -124,7 +142,7 @@ public class EntreprenuersController(IEntreprenuerService entreprenuerService) :
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [HttpGet("service-profiles")]
-    public async Task<IActionResult> GetAllServiceProfiles(BaseQueryParams queryParams)
+    public async Task<IActionResult> GetAllServiceProfiles([FromQuery]BaseQueryParams queryParams)
     {
         var response = await entreprenuerService.GetAllServiceProfiles(queryParams);
         return StatusCode(response.StatusCode, response);
@@ -150,9 +168,9 @@ public class EntreprenuersController(IEntreprenuerService entreprenuerService) :
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [HttpGet("user-recommended-funding")]
-    public async Task<IActionResult> UserRecommendedFunding()
+    public async Task<IActionResult> UserRecommendedFunding([FromQuery]BaseQueryParams queryParams)
     {
-        var response = await entreprenuerService.UserRecommendedFunding();
+        var response = await entreprenuerService.UserRecommendedFunding(queryParams);
         return StatusCode(response.StatusCode, response);
     }
 

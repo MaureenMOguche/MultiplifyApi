@@ -18,5 +18,5 @@ public class Fund : AuditableEntity
     public string FunderId { get; set; } = string.Empty;
     public AppUser Funder { get; set; } = null!;
 
-    public ICollection<AppUser> Applicants { get; set; } = [];
+    public ICollection<FundApplication> Applicants { get; set; } = [];
 }

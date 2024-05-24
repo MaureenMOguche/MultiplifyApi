@@ -13,6 +13,8 @@ public class BusinessInformation : AuditableEntity
     public string Industry { get; set; } = string.Empty;
     public string Categories { get; set; } = string.Empty;
     public decimal AverageIncome { get; set; }
+    public string? BusinessLogo { get; set; }
+    public string? Certifications { get; set; }
 
     public string EntreprenuerId { get; set; } = string.Empty;
     [ForeignKey(nameof(EntreprenuerId))]
